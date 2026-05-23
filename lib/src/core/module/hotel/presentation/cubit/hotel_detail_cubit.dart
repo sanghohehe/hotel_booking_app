@@ -10,6 +10,7 @@ class HotelDetailCubit extends Cubit<HotelDetailState> {
   HotelDetailCubit(this.repository) : super(const HotelDetailState());
 
   Future<void> loadHotelDetail(String hotelId) async {
+    print('LOAD HOTEL DETAIL: $hotelId');
     emit(state.copyWith(status: HotelDetailStatus.loading));
 
     try {

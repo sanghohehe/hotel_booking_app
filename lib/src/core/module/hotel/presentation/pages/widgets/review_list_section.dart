@@ -2,7 +2,7 @@ import 'package:booking_app/src/core/module/hotel/presentation/cubit/hotel_detai
 import 'package:booking_app/src/core/module/hotel/presentation/cubit/hotel_detail_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'review_item.dart'; // Giả sử bạn tách ReviewItem ra file riêng
+import 'review_item.dart'; 
 
 class ReviewListSection extends StatelessWidget {
   final VoidCallback onAddReview;

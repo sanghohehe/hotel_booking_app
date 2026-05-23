@@ -1,3 +1,4 @@
+import 'package:booking_app/src/core/module/admin/presentation/pages/admin_revenue_page.dart';
 import 'package:booking_app/src/core/module/admin/presentation/pages/admin_user_page.dart';
 import 'package:flutter/material.dart';
 
@@ -99,18 +100,22 @@ class _AdminStatsPageState extends State<AdminStatsPage> {
                 color: Colors.green,
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const AdminUserPage(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const AdminUserPage()),
                   );
                 },
               ),
               const SizedBox(height: 12),
+
               _StatCard(
                 title: 'Total revenue',
                 value: '\$${stats.totalRevenue.toStringAsFixed(0)}',
                 icon: Icons.attach_money,
                 color: Colors.purple,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AdminRevenuePage()),
+                  );
+                },
               ),
             ],
           ),

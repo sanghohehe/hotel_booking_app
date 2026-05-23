@@ -1,4 +1,5 @@
 import 'package:booking_app/src/core/module/hotel/data/recently_viewed_service.dart';
+import 'package:booking_app/src/core/module/hotel/presentation/pages/widgets/add_review_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/hotel_entity.dart';
@@ -10,7 +11,6 @@ import 'widgets/review_list_section.dart';
 import 'widgets/room_card.dart';
 
 class HotelDetailPage extends StatefulWidget {
-  // ✅ đổi sang StatefulWidget
   final HotelEntity hotel;
   final bool openReviewOnStart;
 
@@ -25,23 +25,48 @@ class HotelDetailPage extends StatefulWidget {
 }
 
 class _HotelDetailPageState extends State<HotelDetailPage> {
+  HotelDetailCubit? _cubit;
+
   @override
   void initState() {
     super.initState();
-    // ✅ Tự động lưu khi user mở trang
     RecentlyViewedService.saveHotel(widget.hotel);
+    if (widget.openReviewOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) _openReviewSheet();
+        });
+      });
+    }
+  }
+
+  void _openReviewSheet() {
+    if (_cubit == null) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (_) => BlocProvider.value(
+            value: _cubit!,
+            child: AddReviewBottomSheet(hotelId: widget.hotel.id),
+          ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Giữ nguyên toàn bộ build như cũ, chỉ đổi hotel → widget.hotel
     final theme = Theme.of(context);
 
     return BlocProvider(
-      create:
-          (context) =>
-              HotelDetailCubit(context.read())
-                ..loadHotelDetail(widget.hotel.id),
+      create: (context) {
+        final cubit = HotelDetailCubit(context.read())
+          ..loadHotelDetail(widget.hotel.id);
+        _cubit = cubit;
+        return cubit;
+      },
       child: Scaffold(
         backgroundColor: const Color(0xFFF8F9FA),
         body: BlocBuilder<HotelDetailCubit, HotelDetailState>(
@@ -96,8 +121,7 @@ class _HotelDetailPageState extends State<HotelDetailPage> {
                                 crossAxisCount: 2,
                                 crossAxisSpacing: 10,
                                 mainAxisSpacing: 12,
-                                childAspectRatio:
-                                    0.65, // Tăng tỷ lệ từ 0.56 lên 0.65 để vừa vặn chiều cao
+                                childAspectRatio: 0.65,
                               ),
                           itemBuilder: (context, index) {
                             final room = displayHotel.roomTypes[index];
@@ -105,7 +129,7 @@ class _HotelDetailPageState extends State<HotelDetailPage> {
                           },
                         ),
                         const SizedBox(height: 24),
-                        ReviewListSection(onAddReview: () {}),
+                        ReviewListSection(onAddReview: _openReviewSheet),
                       ],
                     ),
                   ),

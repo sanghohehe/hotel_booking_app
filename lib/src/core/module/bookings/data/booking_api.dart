@@ -118,7 +118,7 @@ class BookingApi {
         .eq('hotel_id', hotelId)
         .eq('status', 'done')
         .limit(1);
-
+    print('HAS BOOKING: $data, userId: $_userId, hotelId: $hotelId');
     return (data as List).isNotEmpty;
   }
 

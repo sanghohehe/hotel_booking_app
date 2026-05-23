@@ -35,7 +35,7 @@ class ReviewModel {
       images:
           (json['images'] as List?)?.map((e) => e.toString()).toList() ??
           const [],
-      username: profile?['username'] as String?,
+      username: profile?['full_name'] as String?,
       avatarUrl: profile?['avatar_url'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );

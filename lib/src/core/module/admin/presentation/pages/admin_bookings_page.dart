@@ -15,6 +15,9 @@ class AdminBookingsPage extends StatefulWidget {
 class _AdminBookingsPageState extends State<AdminBookingsPage> {
   final _client = SupabaseManager.client;
   late Future<List<_AdminBookingItem>> _future;
+  int? _filterYear;
+  int? _filterMonth;
+  int? _filterDay;
 
   String _statusFilter = 'all';
   final Set<String> _confirmingIds = <String>{};
@@ -79,6 +82,25 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
 
     if (_statusFilter != 'all') {
       q = q.eq('status', _statusFilter);
+    }
+
+    // Lọc theo check_in
+    if (_filterYear != null && _filterMonth != null && _filterDay != null) {
+      final date = DateTime(_filterYear!, _filterMonth!, _filterDay!);
+      final dateStr = DateFormat('yyyy-MM-dd').format(date);
+      q = q.eq('check_in', dateStr);
+    } else if (_filterYear != null && _filterMonth != null) {
+      final start = DateTime(_filterYear!, _filterMonth!, 1);
+      final end = DateTime(_filterYear!, _filterMonth! + 1, 1);
+      q = q
+          .gte('check_in', DateFormat('yyyy-MM-dd').format(start))
+          .lt('check_in', DateFormat('yyyy-MM-dd').format(end));
+    } else if (_filterYear != null) {
+      final start = DateTime(_filterYear!, 1, 1);
+      final end = DateTime(_filterYear! + 1, 1, 1);
+      q = q
+          .gte('check_in', DateFormat('yyyy-MM-dd').format(start))
+          .lt('check_in', DateFormat('yyyy-MM-dd').format(end));
     }
 
     final raw = await q.order('created_at', ascending: false);
@@ -446,7 +468,131 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                   },
                 ),
               ),
-
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Row(
+                  children: [
+                    // Năm
+                    Expanded(
+                      child: DropdownButtonFormField<int?>(
+                        value: _filterYear,
+                        decoration: const InputDecoration(
+                          labelText: 'Năm',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('Tất cả'),
+                          ),
+                          ...List.generate(5, (i) {
+                            final y = DateTime.now().year - i;
+                            return DropdownMenuItem(
+                              value: y,
+                              child: Text('$y'),
+                            );
+                          }),
+                        ],
+                        onChanged: (v) {
+                          setState(() {
+                            _filterYear = v;
+                            _filterMonth = null;
+                            _filterDay = null;
+                          });
+                          _reload();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Tháng
+                    Expanded(
+                      child: DropdownButtonFormField<int?>(
+                        value: _filterMonth,
+                        decoration: const InputDecoration(
+                          labelText: 'Tháng',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items:
+                            _filterYear == null
+                                ? [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('--'),
+                                  ),
+                                ]
+                                : [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('Tất cả'),
+                                  ),
+                                  ...List.generate(
+                                    12,
+                                    (i) => DropdownMenuItem(
+                                      value: i + 1,
+                                      child: Text('T${i + 1}'),
+                                    ),
+                                  ),
+                                ],
+                        onChanged:
+                            _filterYear == null
+                                ? null
+                                : (v) {
+                                  setState(() {
+                                    _filterMonth = v;
+                                    _filterDay = null;
+                                  });
+                                  _reload();
+                                },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Ngày
+                    Expanded(
+                      child: DropdownButtonFormField<int?>(
+                        value: _filterDay,
+                        decoration: const InputDecoration(
+                          labelText: 'Ngày',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items:
+                            _filterMonth == null
+                                ? [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('--'),
+                                  ),
+                                ]
+                                : [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('Tất cả'),
+                                  ),
+                                  ...List.generate(
+                                    DateUtils.getDaysInMonth(
+                                      _filterYear!,
+                                      _filterMonth!,
+                                    ),
+                                    (i) => DropdownMenuItem(
+                                      value: i + 1,
+                                      child: Text('${i + 1}'),
+                                    ),
+                                  ),
+                                ],
+                        onChanged:
+                            _filterMonth == null
+                                ? null
+                                : (v) {
+                                  setState(() => _filterDay = v);
+                                  _reload();
+                                },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               Expanded(
                 child:
                     bookings.isEmpty

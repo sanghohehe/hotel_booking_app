@@ -19,18 +19,25 @@ class ReviewApi {
 
   /// Lấy list review của 1 khách sạn (kèm profile)
   Future<List<ReviewModel>> getReviewsForHotel(String hotelId) async {
-    final data = await _client
-        .from('reviews')
-        .select(
-          'id, hotel_id, user_id, rating, comment, images, created_at, '
-          'profiles:profiles!reviews_user_id_profiles_fkey(full_name, avatar_url)',
-        )
-        .eq('hotel_id', hotelId)
-        .order('created_at', ascending: false);
+    try {
+      print('GET REVIEWS FOR: $hotelId');
+      final data = await _client
+          .from('reviews')
+          .select(
+            'id, hotel_id, user_id, rating, comment, images, created_at, '
+            'profiles:profiles!reviews_user_id_profiles_fkey(full_name, avatar_url)',
+          )
+          .eq('hotel_id', hotelId)
+          .order('created_at', ascending: false);
 
-    return (data as List)
-        .map((e) => ReviewModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+      print('REVIEWS RAW: $data');
+      return (data as List)
+          .map((e) => ReviewModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('REVIEWS ERROR: $e');
+      rethrow;
+    }
   }
 
   /// Upload ảnh review lên Storage -> trả về list public url
