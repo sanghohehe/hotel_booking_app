@@ -30,7 +30,11 @@ class BookingsCubit extends Cubit<BookingsState> {
       _updateProcessingStatus(bookingId, add: true);
 
       try {
-        await _useCases.payBooking(bookingId, method);
+        await _useCases.payBooking(
+          bookingId,
+          method,
+          currentState.bookings.firstWhere((b) => b.id == bookingId).totalPrice,
+        );
         await loadBookings(); // Reload để lấy trạng thái mới từ Server
       } catch (e) {
         // Có thể emit một Failure state hoặc giữ nguyên list kèm thông báo lỗi
@@ -41,10 +45,10 @@ class BookingsCubit extends Cubit<BookingsState> {
   }
 
   // Hủy đặt phòng
-  Future<void> cancelBooking(String bookingId) async {
+  Future<void> cancelBooking(String bookingId, {String? hotelName}) async {
     _updateProcessingStatus(bookingId, add: true);
     try {
-      await _useCases.cancelBooking(bookingId);
+      await _useCases.cancelBooking(bookingId, hotelName: hotelName);
       await loadBookings();
     } finally {
       _updateProcessingStatus(bookingId, add: false);

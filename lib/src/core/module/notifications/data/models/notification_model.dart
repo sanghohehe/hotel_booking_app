@@ -36,4 +36,6 @@ class AppNotification {
       createdAt: createdAt,
     );
   }
+
+  
 }

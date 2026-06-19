@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:booking_app/src/core/module/vouchers/data/voucher_model.dart';
+import 'package:booking_app/src/core/module/vouchers/presentation/widgets/voucher_input_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -117,31 +119,37 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   String _method = 'momo';
+  VoucherModel? _appliedVoucher;
+  double? _finalPrice;
 
   void _onMethodSelected(String method) {
     setState(() => _method = method);
   }
 
   Future<void> _proceed() async {
+    // Dùng _finalPrice nếu có voucher, không thì dùng giá gốc
+    final priceToCharge = _finalPrice ?? widget.booking.totalPrice;
+
+    // Tạo booking entity với giá mới
+    final bookingWithDiscount = widget.booking.copyWith(
+      totalPrice: priceToCharge,
+    );
+
     Widget screen;
     switch (_method) {
       case 'momo':
-        screen = _MomoScreen(booking: widget.booking);
+        screen = _MomoScreen(booking: bookingWithDiscount);
         break;
       case 'vnpay':
-        screen = _VnpayScreen(booking: widget.booking);
+        screen = _VnpayScreen(booking: bookingWithDiscount);
         break;
       default:
-        screen = _VisaScreen(booking: widget.booking);
+        screen = _VisaScreen(booking: bookingWithDiscount);
     }
 
-    final bool? result = await Navigator.of(
+    await Navigator.of(
       context,
     ).push<bool>(MaterialPageRoute(builder: (_) => screen));
-
-    // Nếu thất bại (false), _ProcessingScreen đã pop về đây
-    // Nếu thành công, _ProcessingScreen tự navigate đến BookingsPage rồi
-    // Không cần xử lý gì thêm ở đây
   }
 
   @override
@@ -281,6 +289,17 @@ class _PaymentPageState extends State<PaymentPage> {
                 ],
               ),
             ),
+            const SizedBox(height: 28),
+
+            VoucherInputWidget(
+              originalPrice: widget.booking.totalPrice,
+              onVoucherChanged: (voucher, finalPrice) {
+                setState(() {
+                  _appliedVoucher = voucher;
+                  _finalPrice = finalPrice;
+                });
+              },
+            ),
 
             const SizedBox(height: 28),
 
@@ -353,7 +372,7 @@ class _PaymentPageState extends State<PaymentPage> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '• \$${fmt.format(b.totalPrice.toInt())}',
+                      '• \$${fmt.format((_finalPrice ?? b.totalPrice).toInt())}',
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
@@ -914,7 +933,8 @@ class _MomoScreenState extends State<_MomoScreen> {
     final success = Random().nextDouble() < 0.95;
     await BookingApi().payMock(
       bookingId: widget.booking.id,
-      method: method,
+      method: 'momo',
+      finalPrice: widget.booking.totalPrice,
       success: success,
     );
     return success;
@@ -1315,6 +1335,7 @@ class _VnpayScreenState extends State<_VnpayScreen> {
                 await BookingApi().payMock(
                   bookingId: widget.booking.id,
                   method: 'vnpay',
+                  finalPrice: widget.booking.totalPrice,
                   success: success,
                 );
                 return success;
@@ -1754,6 +1775,7 @@ class _VisaScreenState extends State<_VisaScreen>
                 await BookingApi().payMock(
                   bookingId: widget.booking.id,
                   method: 'visa',
+                  finalPrice: widget.booking.totalPrice,
                   success: success,
                 );
                 return success;

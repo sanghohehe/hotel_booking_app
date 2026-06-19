@@ -195,7 +195,10 @@ class BookingsView extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      context.read<BookingsCubit>().cancelBooking(booking.id);
+      context.read<BookingsCubit>().cancelBooking(
+        booking.id,
+        hotelName: booking.hotelName,
+      );
     }
   }
 

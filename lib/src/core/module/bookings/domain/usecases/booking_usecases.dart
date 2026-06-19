@@ -7,10 +7,15 @@ class BookingUseCases {
 
   Future<List<BookingModel>> getMyBookings() => _api.getMyBookings();
 
-  Future<void> payBooking(String id, String method) =>
-      _api.payMock(bookingId: id, method: method, success: true);
+  Future<void> payBooking(String id, String method, double finalPrice) =>
+      _api.payMock(
+        bookingId: id,
+        method: method,
+        finalPrice: finalPrice,
+        success: true,
+      );
 
-  Future<void> cancelBooking(String id) => _api.cancelBooking(id);
-
+  Future<void> cancelBooking(String id, {String? hotelName}) =>
+      _api.cancelBooking(id, hotelName: hotelName);
   Future<void> markDone(String id) => _api.markBookingDone(id);
 }

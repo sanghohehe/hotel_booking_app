@@ -201,7 +201,8 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
   }
 
   Future<void> _reload() async {
-    setState(() => _future = _loadBookings());
+    final newFuture = _loadBookings();
+    if (mounted) setState(() => _future = newFuture);
   }
 
   // ✅ Confirm booking
@@ -461,10 +462,10 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                       child: Text('Cancelled'),
                     ),
                   ],
-                  onChanged: (v) async {
+                  onChanged: (v) {
                     if (v == null) return;
                     setState(() => _statusFilter = v);
-                    await _reload();
+                    _reload();
                   },
                 ),
               ),
@@ -605,7 +606,10 @@ class _AdminBookingsPageState extends State<AdminBookingsPage> {
                           ),
                         )
                         : RefreshIndicator(
-                          onRefresh: _reload,
+                          onRefresh: () async {
+                            final newFuture = _loadBookings();
+                            if (mounted) setState(() => _future = newFuture);
+                          },
                           child: ListView.separated(
                             padding: const EdgeInsets.all(16),
                             itemCount: bookings.length,

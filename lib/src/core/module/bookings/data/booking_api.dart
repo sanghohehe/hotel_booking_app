@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../supabase/supabase_manager.dart';
@@ -53,7 +55,18 @@ class BookingApi {
             )
             .single();
 
-    return BookingModel.fromJson(data as Map<String, dynamic>);
+    final booking = BookingModel.fromJson(data as Map<String, dynamic>);
+
+    unawaited(
+      _notifyAdmin(
+        type: 'new_booking',
+        title: '🆕 Booking mới',
+        body:
+            'Có booking mới tại ${booking.hotelName ?? hotelId} cần xác nhận.',
+      ),
+    );
+
+    return booking;
   }
 
   /// GET BOOKINGS
@@ -74,13 +87,21 @@ class BookingApi {
   }
 
   /// CANCEL
-  Future<void> cancelBooking(String bookingId) async {
+  Future<void> cancelBooking(String bookingId, {String? hotelName}) async {
     await _client
         .from('bookings')
         .update({'status': 'cancelled'})
         .eq('id', bookingId)
         .eq('user_id', _userId)
         .or('status.eq.pending,status.eq.confirmed');
+
+    unawaited(
+      _notifyAdmin(
+        type: 'booking_cancelled',
+        title: '❌ Booking bị hủy',
+        body: 'Booking tại ${hotelName ?? bookingId} đã bị user hủy.',
+      ),
+    );
   }
 
   /// DONE
@@ -110,6 +131,23 @@ class BookingApi {
     return (data as List).length;
   }
 
+  // Thêm hàm helper private vào BookingApi:
+  Future<void> _notifyAdmin({
+    required String type,
+    required String title,
+    required String body,
+  }) async {
+    try {
+      await _client.from('notifications').insert({
+        'user_id': _userId,
+        'type': type,
+        'title': title,
+        'body': body,
+        'is_admin_notification': true,
+      });
+    } catch (e) {}
+  }
+
   Future<bool> hasBookingForHotel(String hotelId) async {
     final data = await _client
         .from('bookings')
@@ -125,6 +163,7 @@ class BookingApi {
   Future<void> payMock({
     required String bookingId,
     required String method,
+    required double finalPrice,
     bool success = true,
   }) async {
     if (success) {
@@ -134,6 +173,7 @@ class BookingApi {
             'payment_status': 'paid',
             'payment_method': method,
             'paid_at': DateTime.now().toIso8601String(),
+            'total_price': finalPrice,
           })
           .eq('id', bookingId)
           .eq('user_id', _userId);
