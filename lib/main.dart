@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'src/core/supabase/supabase_manager.dart';
 import 'src/core/theme/app_theme.dart';
 import 'src/core/module/auth/presentation/pages/sign_in_page.dart';
+import 'src/core/module/auth/presentation/pages/user_setup_page.dart';
 
 import 'package:booking_app/src/core/module/hotel/data/hotel_api.dart';
 import 'package:booking_app/src/core/module/hotel/data/repositories/hotel_repository_impl.dart';
@@ -62,7 +63,9 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Hotel Booking',
       theme: AppTheme.lightTheme,
-      home: const SignInPage(),
+
+      home: const SignInPage(), // <-- Comment tạm thời dòng cũ này lại
+      // home: const UserSetupPage(),  // <-- Đổi thành trang này để chạy tạo 24 user
     );
   }
 }

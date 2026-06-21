@@ -54,6 +54,11 @@ class _SignUpPageState extends State<SignUpPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), behavior: SnackBarBehavior.floating),
       );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: $e'), behavior: SnackBarBehavior.floating),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -63,6 +68,9 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     const primaryColor = Colors.teal;
+
+    // Lấy kích thước màn hình để tính toán khoảng cách thay cho Spacer()
+    final screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
       body: Stack(
@@ -90,125 +98,131 @@ class _SignUpPageState extends State<SignUpPage> {
           ),
 
           SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                Align(
-                  alignment: Alignment.topLeft,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new,
+            child: SingleChildScrollView(
+              // 👈 Đã bọc SingleChildScrollView chống tràn pixel
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new,
+                        color: Colors.white,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+
+                  // 👈 Thay thế Spacer() cũ để đẩy Form xuống chân màn hình mà không gây crash
+                  SizedBox(height: screenSize.height * 0.12),
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 32,
+                    ),
+                    decoration: const BoxDecoration(
                       color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(32),
+                        topRight: Radius.circular(32),
+                      ),
                     ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-                const Spacer(),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 32,
-                  ),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(32),
-                      topRight: Radius.circular(32),
-                    ),
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Tạo tài khoản mới',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Bắt đầu hành trình trải nghiệm nghỉ dưỡng tuyệt vời.',
-                          style: TextStyle(color: Colors.grey[600]),
-                        ),
-                        const SizedBox(height: 32),
-
-                        CustomTextField(
-                          controller: _fullNameController,
-                          label: 'Họ và tên',
-                          hint: 'Nguyễn Văn A',
-                          icon: Icons.person_outline,
-                          validator:
-                              (v) => v!.isEmpty ? 'Vui lòng nhập họ tên' : null,
-                        ),
-                        const SizedBox(height: 20),
-
-                        CustomTextField(
-                          controller: _emailController,
-                          label: 'Email Address',
-                          hint: 'example@gmail.com',
-                          icon: Icons.email_outlined,
-                          validator:
-                              (v) =>
-                                  !v!.contains('@')
-                                      ? 'Email không hợp lệ'
-                                      : null,
-                        ),
-                        const SizedBox(height: 20),
-
-                        CustomTextField(
-                          controller: _passwordController,
-                          label: 'Password',
-                          hint: '••••••••',
-                          icon: Icons.lock_outline,
-                          isPassword: true,
-                          obscureText: _obscure,
-                          onSuffixIconPressed:
-                              () => setState(() => _obscure = !_obscure),
-                          validator:
-                              (v) =>
-                                  v!.length < 6
-                                      ? 'Mật khẩu tối thiểu 6 ký tự'
-                                      : null,
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _onSignUp,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryColor,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 0,
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tạo tài khoản mới',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
                             ),
-                            child:
-                                _isLoading
-                                    ? const CircularProgressIndicator(
-                                      color: Colors.white,
-                                    )
-                                    : const Text(
-                                      'ĐĂNG KÝ NGAY',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            'Bắt đầu hành trình trải nghiệm nghỉ dưỡng tuyệt vời.',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          const SizedBox(height: 32),
+
+                          CustomTextField(
+                            controller: _fullNameController,
+                            label: 'Họ và tên',
+                            hint: 'Nguyễn Văn A',
+                            icon: Icons.person_outline,
+                            validator:
+                                (v) =>
+                                    v!.isEmpty ? 'Vui lòng nhập họ tên' : null,
+                          ),
+                          const SizedBox(height: 20),
+
+                          CustomTextField(
+                            controller: _emailController,
+                            label: 'Email Address',
+                            hint: 'example@gmail.com',
+                            icon: Icons.email_outlined,
+                            validator:
+                                (v) =>
+                                    !v!.contains('@')
+                                        ? 'Email không hợp lệ'
+                                        : null,
+                          ),
+                          const SizedBox(height: 20),
+
+                          CustomTextField(
+                            controller: _passwordController,
+                            label: 'Password',
+                            hint: '••••••••',
+                            icon: Icons.lock_outline,
+                            isPassword: true,
+                            obscureText: _obscure,
+                            onSuffixIconPressed:
+                                () => setState(() => _obscure = !_obscure),
+                            validator:
+                                (v) =>
+                                    v!.length < 6
+                                        ? 'Mật khẩu tối thiểu 6 ký tự'
+                                        : null,
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _onSignUp,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 0,
+                              ),
+                              child:
+                                  _isLoading
+                                      ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                      : const Text(
+                                        'ĐĂNG KÝ NGAY',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
