@@ -25,6 +25,9 @@ mixin _$BookingConfirmState {
   String? get error => throw _privateConstructorUsedError;
   BookingEntity? get successBooking => throw _privateConstructorUsedError;
 
+  /// ✅ null = đang loading check, true = còn phòng, false = hết phòng
+  bool? get isRoomAvailable => throw _privateConstructorUsedError;
+
   /// Create a copy of BookingConfirmState
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -47,6 +50,7 @@ abstract class $BookingConfirmStateCopyWith<$Res> {
     int children,
     String? error,
     BookingEntity? successBooking,
+    bool? isRoomAvailable,
   });
 }
 
@@ -72,6 +76,7 @@ class _$BookingConfirmStateCopyWithImpl<$Res, $Val extends BookingConfirmState>
     Object? children = null,
     Object? error = freezed,
     Object? successBooking = freezed,
+    Object? isRoomAvailable = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -110,6 +115,11 @@ class _$BookingConfirmStateCopyWithImpl<$Res, $Val extends BookingConfirmState>
                     ? _value.successBooking
                     : successBooking // ignore: cast_nullable_to_non_nullable
                         as BookingEntity?,
+            isRoomAvailable:
+                freezed == isRoomAvailable
+                    ? _value.isRoomAvailable
+                    : isRoomAvailable // ignore: cast_nullable_to_non_nullable
+                        as bool?,
           )
           as $Val,
     );
@@ -133,6 +143,7 @@ abstract class _$$BookingConfirmStateImplCopyWith<$Res>
     int children,
     String? error,
     BookingEntity? successBooking,
+    bool? isRoomAvailable,
   });
 }
 
@@ -157,6 +168,7 @@ class __$$BookingConfirmStateImplCopyWithImpl<$Res>
     Object? children = null,
     Object? error = freezed,
     Object? successBooking = freezed,
+    Object? isRoomAvailable = freezed,
   }) {
     return _then(
       _$BookingConfirmStateImpl(
@@ -195,6 +207,11 @@ class __$$BookingConfirmStateImplCopyWithImpl<$Res>
                 ? _value.successBooking
                 : successBooking // ignore: cast_nullable_to_non_nullable
                     as BookingEntity?,
+        isRoomAvailable:
+            freezed == isRoomAvailable
+                ? _value.isRoomAvailable
+                : isRoomAvailable // ignore: cast_nullable_to_non_nullable
+                    as bool?,
       ),
     );
   }
@@ -211,6 +228,7 @@ class _$BookingConfirmStateImpl extends _BookingConfirmState {
     this.children = 0,
     this.error,
     this.successBooking,
+    this.isRoomAvailable,
   }) : super._();
 
   @override
@@ -231,9 +249,13 @@ class _$BookingConfirmStateImpl extends _BookingConfirmState {
   @override
   final BookingEntity? successBooking;
 
+  /// ✅ null = đang loading check, true = còn phòng, false = hết phòng
+  @override
+  final bool? isRoomAvailable;
+
   @override
   String toString() {
-    return 'BookingConfirmState(isLoading: $isLoading, checkIn: $checkIn, checkOut: $checkOut, adults: $adults, children: $children, error: $error, successBooking: $successBooking)';
+    return 'BookingConfirmState(isLoading: $isLoading, checkIn: $checkIn, checkOut: $checkOut, adults: $adults, children: $children, error: $error, successBooking: $successBooking, isRoomAvailable: $isRoomAvailable)';
   }
 
   @override
@@ -251,7 +273,9 @@ class _$BookingConfirmStateImpl extends _BookingConfirmState {
                 other.children == children) &&
             (identical(other.error, error) || other.error == error) &&
             (identical(other.successBooking, successBooking) ||
-                other.successBooking == successBooking));
+                other.successBooking == successBooking) &&
+            (identical(other.isRoomAvailable, isRoomAvailable) ||
+                other.isRoomAvailable == isRoomAvailable));
   }
 
   @override
@@ -264,6 +288,7 @@ class _$BookingConfirmStateImpl extends _BookingConfirmState {
     children,
     error,
     successBooking,
+    isRoomAvailable,
   );
 
   /// Create a copy of BookingConfirmState
@@ -287,6 +312,7 @@ abstract class _BookingConfirmState extends BookingConfirmState {
     final int children,
     final String? error,
     final BookingEntity? successBooking,
+    final bool? isRoomAvailable,
   }) = _$BookingConfirmStateImpl;
   const _BookingConfirmState._() : super._();
 
@@ -304,6 +330,10 @@ abstract class _BookingConfirmState extends BookingConfirmState {
   String? get error;
   @override
   BookingEntity? get successBooking;
+
+  /// ✅ null = đang loading check, true = còn phòng, false = hết phòng
+  @override
+  bool? get isRoomAvailable;
 
   /// Create a copy of BookingConfirmState
   /// with the given fields replaced by the non-null parameter values.

@@ -564,7 +564,7 @@ class _ChatbotPageState extends State<ChatbotPage>
       ('🏨', 'Tìm KS Đà Nẵng', 'tìm khách sạn ở Đà Nẵng'),
       ('📋', 'Booking của tôi', 'list_bookings'),
       ('🌟', 'KS 5 sao Hà Nội', 'tìm khách sạn ở Hà Nội'),
-      ('🏝️', 'KS Phú Quốc', 'tìm khách sạn ở Phú Quốc'),
+      ('🏝️', 'KS Nha Trang', 'tìm khách sạn ở Nha Trang'),
     ];
     return Center(
       child: SingleChildScrollView(

@@ -16,8 +16,6 @@ import 'package:booking_app/src/core/module/hotel/domain/entities/hotel_entity.d
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-// Import các widget bạn đã tách ra ở đây
-// import '../widgets/...';
 
 class BookingConfirmPage extends StatelessWidget {
   final HotelEntity hotel;
@@ -31,10 +29,13 @@ class BookingConfirmPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Khởi tạo BlocProvider bao bọc View
     return BlocProvider(
-      create:
-          (context) => BookingConfirmCubit(BookingRepositoryImpl(BookingApi())),
+      create: (context) {
+        final cubit = BookingConfirmCubit(BookingRepositoryImpl(BookingApi()));
+        // ✅ Check availability ngay khi mở trang
+        cubit.checkAvailability(hotelId: hotel.id, roomTypeId: roomType.id);
+        return cubit;
+      },
       child: _BookingConfirmView(hotel: hotel, roomType: roomType),
     );
   }
@@ -58,34 +59,32 @@ class _BookingConfirmViewState extends State<_BookingConfirmView> {
     return BlocConsumer<BookingConfirmCubit, BookingConfirmState>(
       listener: (context, state) async {
         if (state.successBooking != null) {
-          // 1. Mở trang thanh toán và đợi kết quả
           final bool? isPaid = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
               builder: (_) => PaymentPage(booking: state.successBooking!),
             ),
           );
 
-          // 2. Nếu thanh toán thành công (isPaid == true)
           if (isPaid == true && context.mounted) {
-            // Điều hướng đến BookingPage và xóa hết các trang trước đó trong stack
-            // (Ví dụ: Trang tìm kiếm, Trang chi tiết khách sạn -> về thẳng trang quản lý đặt phòng)
             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (_) => const BookingsPage(),
-              ), // Trang danh sách đặt phòng của bạn
-              (route) =>
-                  route
-                      .isFirst, // Giữ lại trang Dashboard/Home nếu muốn, hoặc false để xóa hết
+              MaterialPageRoute(builder: (_) => const BookingsPage()),
+              (route) => route.isFirst,
             );
           }
 
-          // Reset state để tránh trigger lại listener
           context.read<BookingConfirmCubit>().resetStatus();
         }
       },
       builder: (context, state) {
         final isOverCapacity =
             state.totalGuests > (widget.roomType.capacity ?? 0);
+
+        // ✅ Disable nút khi: hết phòng, đang check, quá capacity, ngày sai
+        final isDisabled =
+            state.isUnavailable ||
+            state.isCheckingAvailability ||
+            isOverCapacity ||
+            state.nights <= 0;
 
         return Scaffold(
           backgroundColor: const Color(0xFFF8F9FA),
@@ -104,10 +103,26 @@ class _BookingConfirmViewState extends State<_BookingConfirmView> {
                           : widget.hotel.thumbnailUrl,
                   maxCapacity: widget.roomType.capacity ?? 0,
                 ),
+
+                // ✅ BANNER HẾT PHÒNG
+                if (state.isUnavailable) ...[
+                  const SizedBox(height: 12),
+                  _UnavailableBanner(),
+                ],
+
+                // ✅ BANNER ĐANG KIỂM TRA
+                if (state.isCheckingAvailability) ...[
+                  const SizedBox(height: 12),
+                  _CheckingAvailabilityBanner(),
+                ],
+
                 const SizedBox(height: 24),
                 Label('Thời gian lưu trú'),
                 GestureDetector(
-                  onTap: () => _selectDateRange(context, state),
+                  onTap:
+                      state.isUnavailable
+                          ? null
+                          : () => _selectDateRange(context, state),
                   child: SectionCard(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -130,15 +145,17 @@ class _BookingConfirmViewState extends State<_BookingConfirmView> {
                   isOverCapacity: isOverCapacity,
                   maxCapacity: widget.roomType.capacity ?? 0,
                   onAdultsChanged:
-                      (v) => context.read<BookingConfirmCubit>().updateGuests(
-                        v,
-                        state.children,
-                      ),
+                      state.isUnavailable
+                          ? (_) {}
+                          : (v) => context
+                              .read<BookingConfirmCubit>()
+                              .updateGuests(v, state.children),
                   onChildrenChanged:
-                      (v) => context.read<BookingConfirmCubit>().updateGuests(
-                        state.adults,
-                        v,
-                      ),
+                      state.isUnavailable
+                          ? (_) {}
+                          : (v) => context
+                              .read<BookingConfirmCubit>()
+                              .updateGuests(state.adults, v),
                 ),
                 const SizedBox(height: 24),
                 Label('Ghi chú'),
@@ -146,6 +163,7 @@ class _BookingConfirmViewState extends State<_BookingConfirmView> {
                   child: TextField(
                     controller: _noteController,
                     maxLines: 2,
+                    enabled: !state.isUnavailable,
                     decoration: const InputDecoration(
                       hintText: 'Nhập ghi chú...',
                       border: InputBorder.none,
@@ -176,7 +194,7 @@ class _BookingConfirmViewState extends State<_BookingConfirmView> {
           ),
           bottomSheet: BottomAction(
             isLoading: state.isLoading,
-            isDisabled: isOverCapacity || state.nights <= 0,
+            isDisabled: isDisabled,
             totalPrice: state.totalPrice(widget.roomType.pricePerNight),
             onPressed:
                 () => context.read<BookingConfirmCubit>().confirmBooking(
@@ -204,5 +222,81 @@ class _BookingConfirmViewState extends State<_BookingConfirmView> {
     if (picked != null) {
       context.read<BookingConfirmCubit>().updateDates(picked.start, picked.end);
     }
+  }
+}
+
+// ✅ WIDGET: Banner hết phòng
+class _UnavailableBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEBEE),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFEF9A9A)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.do_not_disturb_alt_rounded,
+            color: Color(0xFFC62828),
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Phòng đã hết',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFC62828),
+                    fontSize: 14,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Loại phòng này đã được khách khác đặt. Vui lòng quay lại chọn phòng khác.',
+                  style: TextStyle(color: Color(0xFFB71C1C), fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ✅ WIDGET: Banner đang kiểm tra
+class _CheckingAvailabilityBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'Đang kiểm tra tình trạng phòng...',
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+        ],
+      ),
+    );
   }
 }

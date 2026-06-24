@@ -11,4 +11,8 @@ abstract class BookingRepository {
     required double pricePerNight,
     String? note,
   });
+
+  /// ✅ Kiểm tra phòng còn trống không
+  /// true = còn phòng, false = đã có người đặt
+  Future<bool> isRoomAvailable(String hotelId, String roomTypeId);
 }

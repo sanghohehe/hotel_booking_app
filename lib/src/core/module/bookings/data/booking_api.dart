@@ -14,6 +14,26 @@ class BookingApi {
     return id;
   }
 
+  /// ✅ CHECK ROOM AVAILABILITY
+  /// Trả về true nếu phòng CÒN TRỐNG (chưa có booking pending/confirmed)
+  Future<bool> isRoomAvailable(String hotelId, String roomTypeId) async {
+    try {
+      final data = await _client
+          .from('bookings')
+          .select('id')
+          .eq('hotel_id', hotelId)
+          .eq('room_type_id', roomTypeId)
+          .or('status.eq.pending,status.eq.confirmed')
+          .limit(1);
+
+      return (data as List).isEmpty;
+    } catch (e) {
+      // Nếu lỗi query thì cho phép đặt để không block user,
+      // server sẽ xử lý lại khi createBooking
+      return true;
+    }
+  }
+
   /// 🔥 CREATE BOOKING (CLEAN VERSION)
   Future<BookingModel> createBooking({
     required String hotelId,
@@ -28,6 +48,12 @@ class BookingApi {
     final nights = checkOut.difference(checkIn).inDays;
     if (nights <= 0) {
       throw Exception('Check-out phải sau check-in ít nhất 1 ngày');
+    }
+
+    // ✅ CHECK TRƯỚC KHI INSERT
+    final available = await isRoomAvailable(hotelId, roomTypeId);
+    if (!available) {
+      throw Exception('Phòng này đã được đặt. Vui lòng chọn phòng khác.');
     }
 
     final totalPrice = pricePerNight * nights;
@@ -131,7 +157,6 @@ class BookingApi {
     return (data as List).length;
   }
 
-  // Thêm hàm helper private vào BookingApi:
   Future<void> _notifyAdmin({
     required String type,
     required String title,

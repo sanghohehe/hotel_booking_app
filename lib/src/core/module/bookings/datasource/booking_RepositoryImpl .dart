@@ -20,7 +20,6 @@ class BookingRepositoryImpl implements BookingRepository {
     String? note,
   }) async {
     try {
-      /// 🔥 CALL API (trả về MODEL)
       final model = await api.createBooking(
         hotelId: hotelId,
         roomTypeId: roomId,
@@ -35,6 +34,15 @@ class BookingRepositoryImpl implements BookingRepository {
       return model.toEntity();
     } catch (e) {
       throw Exception('Create booking failed: $e');
+    }
+  }
+
+  @override
+  Future<bool> isRoomAvailable(String hotelId, String roomTypeId) async {
+    try {
+      return await api.isRoomAvailable(hotelId, roomTypeId);
+    } catch (e) {
+      throw Exception('Check availability failed: $e');
     }
   }
 }

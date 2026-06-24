@@ -10,8 +10,26 @@ class BookingConfirmCubit extends Cubit<BookingConfirmState> {
         BookingConfirmState(
           checkIn: DateTime.now().add(const Duration(days: 1)),
           checkOut: DateTime.now().add(const Duration(days: 2)),
+          // isRoomAvailable = null → đang loading
         ),
       );
+
+  /// ✅ Gọi ngay khi mở trang BookingConfirmPage
+  Future<void> checkAvailability({
+    required String hotelId,
+    required String roomTypeId,
+  }) async {
+    // Reset về null (loading) trước khi check
+    emit(state.copyWith(isRoomAvailable: null));
+
+    try {
+      final available = await _repository.isRoomAvailable(hotelId, roomTypeId);
+      emit(state.copyWith(isRoomAvailable: available));
+    } catch (e) {
+      // Nếu lỗi, cho phép đặt (tránh block user)
+      emit(state.copyWith(isRoomAvailable: true));
+    }
+  }
 
   void updateDates(DateTime start, DateTime end) {
     emit(state.copyWith(checkIn: start, checkOut: end, error: null));
@@ -36,6 +54,16 @@ class BookingConfirmCubit extends Cubit<BookingConfirmState> {
       return;
     }
 
+    // ✅ Guard thêm lần nữa ở cubit trước khi gọi API
+    if (state.isUnavailable) {
+      emit(
+        state.copyWith(
+          error: "Phòng này đã được đặt. Vui lòng chọn phòng khác.",
+        ),
+      );
+      return;
+    }
+
     emit(state.copyWith(isLoading: true, error: null));
 
     try {
@@ -51,7 +79,16 @@ class BookingConfirmCubit extends Cubit<BookingConfirmState> {
       );
       emit(state.copyWith(isLoading: false, successBooking: booking));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, error: e.toString()));
+      // ✅ Nếu server trả về lỗi hết phòng, cập nhật state luôn
+      final errMsg = e.toString();
+      final isRoomTaken = errMsg.contains('đã được đặt');
+      emit(
+        state.copyWith(
+          isLoading: false,
+          error: errMsg,
+          isRoomAvailable: isRoomTaken ? false : state.isRoomAvailable,
+        ),
+      );
     }
   }
 }
