@@ -38,9 +38,19 @@ class BookingRepositoryImpl implements BookingRepository {
   }
 
   @override
-  Future<bool> isRoomAvailable(String hotelId, String roomTypeId) async {
+  Future<bool> isRoomAvailable(
+    String hotelId,
+    String roomTypeId, {
+    required DateTime checkIn,
+    required DateTime checkOut,
+  }) async {
     try {
-      return await api.isRoomAvailable(hotelId, roomTypeId);
+      return await api.isRoomAvailable(
+        hotelId,
+        roomTypeId,
+        checkIn: checkIn,
+        checkOut: checkOut,
+      );
     } catch (e) {
       throw Exception('Check availability failed: $e');
     }

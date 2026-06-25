@@ -109,6 +109,7 @@ Future<bool> _showFailureDialog(BuildContext context) async {
 // ══════════════════════════════════════════════
 //  ENTRY POINT — không đổi interface với bên ngoài
 // ══════════════════════════════════════════════
+
 class PaymentPage extends StatefulWidget {
   final BookingEntity booking;
   const PaymentPage({super.key, required this.booking});
@@ -127,10 +128,8 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Future<void> _proceed() async {
-    // Dùng _finalPrice nếu có voucher, không thì dùng giá gốc
     final priceToCharge = _finalPrice ?? widget.booking.totalPrice;
 
-    // Tạo booking entity với giá mới
     final bookingWithDiscount = widget.booking.copyWith(
       totalPrice: priceToCharge,
     );
@@ -147,11 +146,18 @@ class _PaymentPageState extends State<PaymentPage> {
         screen = _VisaScreen(booking: bookingWithDiscount);
     }
 
-    await Navigator.of(
+    // Nhận kết quả từ method screen
+    final success = await Navigator.of(
       context,
     ).push<bool>(MaterialPageRoute(builder: (_) => screen));
+
+    if (success == true && mounted) {
+      Navigator.of(context).pop(true); // Pop về _openRoomPayment
+    }
+    // Nếu false hoặc null → ở lại PaymentPage để user chọn method khác
   }
 
+  // ... (phần build giữ nguyên)
   @override
   Widget build(BuildContext context) {
     final b = widget.booking;
@@ -593,10 +599,7 @@ class _ProcessingScreenState extends State<_ProcessingScreen>
     await Future.delayed(const Duration(milliseconds: 1800));
     if (!mounted) return;
     if (result) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const BookingsPage()),
-        (route) => route.isFirst,
-      );
+      Navigator.of(context).pop(true);
     } else {
       Navigator.of(context).pop<bool>(false);
     }
@@ -915,16 +918,24 @@ class _MomoScreenState extends State<_MomoScreen> {
             ),
       ),
     );
-    // Thất bại → hiện dialog, cho thử lại hoặc đổi method
-    if (result == false && mounted) {
-      final retry = await _showFailureDialog(context);
-      if (!retry && mounted) {
-        Navigator.of(context).pop(); // về PaymentPage chọn method khác
-      } else if (mounted) {
-        // Thử lại → tạo QR mới luôn
-        _refreshQr();
-        setState(() => _processing = false);
-      }
+
+    if (!mounted) return;
+
+    if (result == true) {
+      Navigator.of(context).pop(true); // Forward success lên PaymentPage
+      return;
+    }
+
+    // Thất bại
+    final retry = await _showFailureDialog(context);
+    if (!mounted) return;
+
+    if (!retry) {
+      Navigator.of(context).pop(false); // Về PaymentPage, cho chọn method khác
+    } else {
+      // Thử lại
+      _refreshQr();
+      setState(() => _processing = false);
     }
   }
 

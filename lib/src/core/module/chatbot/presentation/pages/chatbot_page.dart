@@ -2,6 +2,8 @@
 //   flutter_markdown: ^0.7.4
 //   http: ^1.2.0  (nếu chưa có)
 
+import 'package:booking_app/src/core/module/bookings/domain/entities/bookingEntity%20.dart';
+import 'package:booking_app/src/core/module/bookings/presentation/pages/payment_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -481,7 +483,7 @@ class _ChatbotPageState extends State<ChatbotPage>
 
   // ─── City chips ───────────────────────────────────────────────────────────
   Widget _buildCityChips(ChatbotCubit cubit) {
-    final cities = ['Hà Nội', 'Đà Nẵng', 'TP.HCM', 'Hội An', 'Phú Quốc'];
+    final cities = ['Hà Nội', 'Đà Nẵng', 'Quy Nhơn', 'Hải Phòng', 'Hà Giang'];
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.only(left: 12, right: 12, bottom: 10),
@@ -769,6 +771,10 @@ class _ChatbotPageState extends State<ChatbotPage>
                       (r) => _buildRoomCard(r, state, cubit),
                     ),
                   ],
+                  if (m.bookings != null && m.bookings!.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    ...m.bookings!.map((b) => _buildBookingCard(b)),
+                  ],
                 ],
               ),
             ),
@@ -776,6 +782,36 @@ class _ChatbotPageState extends State<ChatbotPage>
         ],
       ),
     );
+  }
+
+  Future<void> _openPayment(dynamic b) async {
+    final checkIn = DateTime.parse(b['check_in'] as String);
+    final checkOut = DateTime.parse(b['check_out'] as String);
+
+    final booking = BookingEntity(
+      id: b['id'] as String,
+      checkIn: checkIn,
+      checkOut: checkOut,
+      totalPrice: (b['total_price'] as num).toDouble(),
+      status: b['status'] as String? ?? '',
+      paymentStatus: b['payment_status'] as String? ?? '',
+      guestsAdults: (b['guests_adults'] as num?)?.toInt() ?? 1,
+      guestsChildren: 0,
+      hotelId: null,
+      hotelName: b['hotels']?['name'] as String?,
+      hotelCity: b['hotels']?['city'] as String?,
+      roomTypeName: b['room_types']?['name'] as String?,
+      nights: checkOut.difference(checkIn).inDays,
+    );
+
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => PaymentPage(booking: booking)));
+
+    // Refresh danh sách sau khi thanh toán xong
+    if (mounted) {
+      context.read<ChatbotCubit>().send('list_bookings', addUserBubble: false);
+    }
   }
 
   // ─── Streaming bubble (text đang đến dần) ────────────────────────────────
@@ -1141,9 +1177,12 @@ class _ChatbotPageState extends State<ChatbotPage>
               ),
             ),
             FilledButton(
-              onPressed: state.isSending ? null : () => cubit.bookRoom(r),
+              onPressed:
+                  state.isSending
+                      ? null
+                      : () => _openRoomPayment(r, state, cubit),
               style: FilledButton.styleFrom(
-                backgroundColor: _primary,
+                backgroundColor: const Color(0xFF0A84FF),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -1161,6 +1200,334 @@ class _ChatbotPageState extends State<ChatbotPage>
         ),
       ),
     );
+  }
+
+  Widget _buildBookingCard(dynamic b) {
+    final hotel = b['hotels'];
+    final room = b['room_types'];
+    final status = b['status'] as String? ?? '';
+    final payment = b['payment_status'] as String? ?? '';
+
+    final statusColor = switch (status) {
+      'confirmed' => Colors.green,
+      'pending' => Colors.orange,
+      'cancelled' => Colors.red,
+      'done' => Colors.blue,
+      _ => Colors.grey,
+    };
+
+    final statusLabel = switch (status) {
+      'confirmed' => '✅ Đã xác nhận',
+      'pending' => '⏳ Chờ xác nhận',
+      'cancelled' => '❌ Đã hủy',
+      'done' => '🏁 Hoàn thành',
+      _ => status,
+    };
+
+    final checkIn = DateTime.tryParse(b['check_in'] as String? ?? '');
+    final checkOut = DateTime.tryParse(b['check_out'] as String? ?? '');
+    final nights =
+        (checkIn != null && checkOut != null)
+            ? checkOut.difference(checkIn).inDays
+            : 0;
+
+    return Card(
+      margin: const EdgeInsets.only(top: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Tên KS + badge trạng thái ──
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    hotel?['name'] ?? 'Khách sạn',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // ── Thành phố ──
+            if (hotel?['city'] != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(
+                    Icons.location_on,
+                    size: 13,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    hotel!['city'] as String,
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
+
+            // ── Loại phòng ──
+            if (room?['name'] != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(
+                    Icons.meeting_room,
+                    size: 13,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    room!['name'] as String,
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
+
+            const SizedBox(height: 10),
+
+            // ── Ngày + giá ──
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Check-in
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Check-in',
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        b['check_in'] as String? ?? '',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Icon(
+                    Icons.arrow_forward,
+                    size: 16,
+                    color: Colors.grey.shade400,
+                  ),
+                  // Check-out
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Check-out',
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        b['check_out'] as String? ?? '',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Giá + số đêm
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        context.read<ChatbotCubit>().state.formatVnd(
+                          b['total_price'],
+                        ),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.blue,
+                        ),
+                      ),
+                      Text(
+                        '$nights đêm',
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Trạng thái thanh toán ──
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  payment == 'paid'
+                      ? Icons.check_circle_outline
+                      : Icons.pending_outlined,
+                  size: 14,
+                  color: payment == 'paid' ? Colors.green : Colors.orange,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  payment == 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán',
+                  style: TextStyle(
+                    color: payment == 'paid' ? Colors.green : Colors.orange,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+
+            // ── Nút thanh toán (chỉ hiện khi confirmed + chưa paid) ──
+            if (status == 'confirmed' && payment != 'paid') ...[
+              const SizedBox(height: 10),
+              const Divider(height: 1),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _openPayment(b),
+                  icon: const Icon(Icons.payment_rounded, size: 16),
+                  label: const Text(
+                    'Thanh toán ngay',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF1565C0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openRoomPayment(
+    dynamic r,
+    ChatbotState state,
+    ChatbotCubit cubit,
+  ) async {
+    final checkIn = state.botContext['check_in'] as String?;
+    final checkOut = state.botContext['check_out'] as String?;
+
+    if (checkIn == null || checkOut == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn ngày trước.')),
+      );
+      return;
+    }
+
+    final ciDate = DateTime.parse(checkIn);
+    final coDate = DateTime.parse(checkOut);
+    final nights = coDate.difference(ciDate).inDays;
+    final pricePerNight = (r['price_per_night'] as num).toDouble();
+
+    final tempBooking = BookingEntity(
+      id: r['id'] ?? r['room_type_id'] ?? '',
+      checkIn: ciDate,
+      checkOut: coDate,
+      totalPrice: pricePerNight * nights,
+      status: 'pending',
+      paymentStatus: 'unpaid',
+      guestsAdults: state.guests,
+      guestsChildren: 0,
+      hotelName: state.botContext['hotel_name'] as String?,
+      roomTypeName: r['name'] as String?,
+      nights: nights,
+    );
+
+    final paid = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => PaymentPage(booking: tempBooking)),
+    );
+
+    if (paid == true && mounted) {
+      // 1. Tạo booking qua backend
+      cubit.bookRoom(r);
+
+      // 2. Chờ backend xử lý và trả booking về (thường 1-2 giây)
+      await Future.delayed(const Duration(milliseconds: 1800));
+
+      if (!mounted) return;
+
+      // Lấy bookingId thật từ tin nhắn gần nhất của bot
+      final lastBotMessage = state.messages.lastWhere(
+        (m) => m.role == 'assistant' && m.booking != null,
+        orElse: () => ChatMessageEntity(role: 'assistant', content: ''),
+      );
+
+      final realBookingId = lastBotMessage.booking?['id'] as String?;
+
+      if (realBookingId != null) {
+        await cubit.confirmPayment(
+          bookingId: realBookingId,
+          paymentMethod: 'momo',
+          finalAmount: tempBooking.totalPrice,
+        );
+      } else {
+        // Fallback: thông báo cho user
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Đặt phòng thành công, nhưng vui lòng kiểm tra lại trang Bookings',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
   }
 }
 

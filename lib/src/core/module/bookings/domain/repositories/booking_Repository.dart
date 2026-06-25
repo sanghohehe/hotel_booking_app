@@ -14,5 +14,10 @@ abstract class BookingRepository {
 
   /// ✅ Kiểm tra phòng còn trống không
   /// true = còn phòng, false = đã có người đặt
-  Future<bool> isRoomAvailable(String hotelId, String roomTypeId);
+  Future<bool> isRoomAvailable(
+    String hotelId,
+    String roomTypeId, {
+    required DateTime checkIn,
+    required DateTime checkOut,
+  });
 }

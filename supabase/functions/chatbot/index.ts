@@ -114,19 +114,24 @@ function extractCity(text: string): string | null {
   const t = text.toLowerCase();
 
   const cities: Record<string, string> = {
-    "hà nội": "Hà Nội",
-    "ha noi": "Hà Nội",
-    "đà nẵng": "Đà Nẵng",
-    "da nang": "Đà Nẵng",
-    "tp hcm": "TP.HCM",
-    "hồ chí minh": "TP.HCM",
-    "ho chi minh": "TP.HCM",
-    "nha trang": "Nha Trang",
-    "phú quốc": "Phú Quốc",
-    "phu quoc": "Phú Quốc",
-    "hội an": "Hội An",
-    "hoi an": "Hội An",
-  };
+  "hà nội": "Hà Nội",      "ha noi": "Hà Nội",
+  "đà nẵng": "Đà Nẵng",    "da nang": "Đà Nẵng",
+  "tp hcm": "TP.HCM",      "tp.hcm": "TP.HCM",
+  "tphcm": "TP.HCM",       "hcm": "TP.HCM",
+  "hồ chí minh": "TP.HCM", "ho chi minh": "TP.HCM",
+  "sài gòn": "TP.HCM",     "sai gon": "TP.HCM",
+  "nha trang": "Nha Trang",
+  "phú quốc": "Phú Quốc",  "phu quoc": "Phú Quốc",
+  "hội an": "Hội An",      "hoi an": "Hội An",
+  "huế": "Huế",            "hue": "Huế",
+  "vũng tàu": "Vũng Tàu",  "vung tau": "Vũng Tàu",
+  "cần thơ": "Cần Thơ",    "can tho": "Cần Thơ",
+  "đà lạt": "Đà Lạt",      "da lat": "Đà Lạt",
+  "hải phòng": "Hải Phòng","hai phong": "Hải Phòng",
+  "quy nhơn": "Quy Nhơn",  "quy nhon": "Quy Nhơn",
+  "phan thiết": "Phan Thiết","phan thiet": "Phan Thiết",
+  "buôn ma thuột": "Buôn Ma Thuột",
+};
 
   for (const [k, v] of Object.entries(cities)) {
     if (t.includes(k)) return v;
@@ -140,15 +145,22 @@ function extractCity(text: string): string | null {
 function detectIntent(message: string): Intent {
   const t = message.toLowerCase().trim();
 
+  // ⚠️ Phải check list_bookings TRƯỚC create_booking
+  // vì "list_bookings" chứa chữ "book"
   if (/hủy|cancel/.test(t)) {
     return "cancel_booking";
   }
 
-  if (/booking của tôi|đơn đặt|lịch sử/.test(t)) {
+  if (/booking của tôi|đơn đặt|lịch sử|list_bookings/.test(t)) {
     return "list_bookings";
   }
 
-  if (/đặt phòng|book|đặt ngay/.test(t)) {
+  if (/^đặt phòng$|đặt ngay|đặt phòng này/.test(t) || t === "đặt phòng") {
+    return "create_booking";
+  }
+
+  // "book" một mình không đủ, phải có ngữ cảnh rõ hơn
+  if (/đặt phòng|bookroom/.test(t)) {
     return "create_booking";
   }
 
@@ -156,9 +168,7 @@ function detectIntent(message: string): Intent {
     return "check_availability";
   }
 
-  if (
-    /khách sạn|hotel|resort|tìm ks|tìm khách sạn/.test(t)
-  ) {
+  if (/khách sạn|hotel|resort|tìm ks|tìm khách sạn/.test(t)) {
     return "hotel_search";
   }
 
@@ -211,6 +221,29 @@ async function callGroq(args: {
 }
 
 // ───────────────── MAIN ─────────────────
+
+async function extractCityWithAI(
+  message: string,
+  apiKey: string,
+  model: string,
+): Promise<string | null> {
+  try {
+    const result = await callGroq({
+      apiKey,
+      model,
+      systemPrompt:
+        `Trích xuất tên thành phố Việt Nam từ câu hỏi. 
+Chỉ trả về tên thành phố, không giải thích. 
+Nếu không có thành phố, trả về: null`,
+      userMessage: message,
+    });
+    const city = result.trim().replace(/^"|"$/g, "");
+    return city === "null" || city === "" ? null : city;
+  } catch {
+    return null;
+  }
+}
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -349,10 +382,7 @@ serve(async (req) => {
     // ───────────────── HOTEL SEARCH ─────────────────
 
     if (intent === "hotel_search") {
-      const city =
-        ctx.city ??
-        extractCity(message);
-
+      const city = ctx.city ?? extractCity(message) ?? await extractCityWithAI(message, groqKey, groqModel);
       let query = supabase
         .from("hotels")
         .select(`
@@ -629,7 +659,7 @@ serve(async (req) => {
           guests_adults: guests,
           guests_children: 0,
           total_price: total,
-          status: "confirmed",
+          status: "pending",
           payment_status: "unpaid",
         })
         .select(`
@@ -678,68 +708,56 @@ serve(async (req) => {
     // ───────────────── LIST BOOKINGS ─────────────────
 
     if (intent === "list_bookings") {
-      const {
-        data,
-        error,
-      } = await supabase
-        .from("bookings")
-        .select(`
-          *,
-          hotels(name),
-          room_types(name)
-        `)
-        .eq("user_id", user.id)
-        .order("created_at", {
-          ascending: false,
-        });
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(`
+      id,
+      check_in,
+      check_out,
+      total_price,
+      status,
+      payment_status,
+      guests_adults,
+      hotels(name, city),
+      room_types(name)
+    `)
+    .eq("user_id", user.id)          // ← dùng user.id từ auth, không phải chat context
+    .neq("status", "cancelled")      // ← bỏ booking đã hủy nếu muốn, xóa dòng này nếu muốn hiện hết
+    .order("created_at", { ascending: false });
 
-      if (error) {
-        return json({
-          reply:
-            "❌ Không lấy được booking.",
-        });
-      }
+  if (error) {
+    return json({ reply: "❌ Không lấy được booking." });
+  }
 
-      const bookings =
-        data ?? [];
+  const bookings = data ?? [];
 
-      const assistantReply =
-        bookings.length === 0
-          ? "📭 Bạn chưa có booking nào."
-          : "📋 Booking của bạn:\n\n" +
-            bookings
-              .map(
-                (b: any, i: number) =>
-                  `${i + 1}. **${
-                    b.hotels?.name
-                  }**\n📅 ${b.check_in} → ${
-                    b.check_out
-                  }\n💰 ${money(
-                    b.total_price,
-                  )}`,
-              )
-              .join("\n\n");
+  const assistantReply =
+    bookings.length === 0
+      ? "📭 Bạn chưa có booking nào."
+      : "📋 Booking của bạn:\n\n" +
+        bookings
+          .map(
+            (b: any, i: number) =>
+              `${i + 1}. **${b.hotels?.name}**\n` +
+              `🛏 ${b.room_types?.name}\n` +
+              `📅 ${b.check_in} → ${b.check_out}\n` +
+              `💰 ${money(b.total_price)}\n` +
+              `📌 ${b.status} | ${b.payment_status}`,
+          )
+          .join("\n\n");
 
-      await saveMessage(
-        supabase,
-        user.id,
-        conversationId,
-        "assistant",
-        assistantReply,
-        {
-          type: "bookings_list",
-          bookings,
-        },
-      );
+  await saveMessage(supabase, user.id, conversationId, "assistant", assistantReply, {
+    type: "bookings_list",
+    bookings,
+  });
 
-      return json({
-        conversation_id:
-          conversationId,
-        type: "bookings_list",
-        bookings,
-        reply: assistantReply,
-      });
-    }
+  return json({
+    conversation_id: conversationId,
+    type: "bookings_list",
+    bookings,
+    reply: assistantReply,
+  });
+}
 
     // ───────────────── CANCEL BOOKING ─────────────────
 

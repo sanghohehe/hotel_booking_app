@@ -16,20 +16,28 @@ class BookingApi {
 
   /// ✅ CHECK ROOM AVAILABILITY
   /// Trả về true nếu phòng CÒN TRỐNG (chưa có booking pending/confirmed)
-  Future<bool> isRoomAvailable(String hotelId, String roomTypeId) async {
+  Future<bool> isRoomAvailable(
+    String hotelId,
+    String roomTypeId, {
+    required DateTime checkIn,
+    required DateTime checkOut,
+  }) async {
     try {
+      final ci = checkIn.toIso8601String().split('T').first;
+      final co = checkOut.toIso8601String().split('T').first;
+
       final data = await _client
           .from('bookings')
           .select('id')
           .eq('hotel_id', hotelId)
           .eq('room_type_id', roomTypeId)
           .or('status.eq.pending,status.eq.confirmed')
+          .lt('check_in', co) // check_in < check_out mới
+          .gt('check_out', ci) // check_out > check_in mới
           .limit(1);
 
       return (data as List).isEmpty;
     } catch (e) {
-      // Nếu lỗi query thì cho phép đặt để không block user,
-      // server sẽ xử lý lại khi createBooking
       return true;
     }
   }
@@ -51,7 +59,12 @@ class BookingApi {
     }
 
     // ✅ CHECK TRƯỚC KHI INSERT
-    final available = await isRoomAvailable(hotelId, roomTypeId);
+    final available = await isRoomAvailable(
+      hotelId,
+      roomTypeId,
+      checkIn: checkIn,
+      checkOut: checkOut,
+    );
     if (!available) {
       throw Exception('Phòng này đã được đặt. Vui lòng chọn phòng khác.');
     }

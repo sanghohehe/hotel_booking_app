@@ -13,15 +13,19 @@ import 'widgets/room_card.dart';
 class HotelDetailPage extends StatefulWidget {
   final HotelEntity hotel;
   final bool openReviewOnStart;
+  final DateTime? checkIn; // ← thêm (nullable vì có thể vào xem trước)
+  final DateTime? checkOut; // ← thêm
 
   const HotelDetailPage({
     super.key,
     required this.hotel,
     this.openReviewOnStart = false,
+    this.checkIn, // ← thêm
+    this.checkOut, // ← thêm
   });
 
   @override
-  State<HotelDetailPage> createState() => _HotelDetailPageState();
+  State<HotelDetailPage> createState() => _HotelDetailPageState(); // ← thêm dòng này
 }
 
 class _HotelDetailPageState extends State<HotelDetailPage> {
@@ -125,7 +129,14 @@ class _HotelDetailPageState extends State<HotelDetailPage> {
                               ),
                           itemBuilder: (context, index) {
                             final room = displayHotel.roomTypes[index];
-                            return RoomCard(hotel: displayHotel, room: room);
+                            return RoomCard(
+                              hotel: displayHotel,
+                              room: room,
+                              checkIn: widget.checkIn ?? DateTime.now(),
+                              checkOut:
+                                  widget.checkOut ??
+                                  DateTime.now().add(const Duration(days: 1)),
+                            );
                           },
                         ),
                         const SizedBox(height: 24),

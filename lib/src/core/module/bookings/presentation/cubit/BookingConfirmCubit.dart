@@ -18,15 +18,20 @@ class BookingConfirmCubit extends Cubit<BookingConfirmState> {
   Future<void> checkAvailability({
     required String hotelId,
     required String roomTypeId,
+    required DateTime checkIn,
+    required DateTime checkOut,
   }) async {
-    // Reset về null (loading) trước khi check
     emit(state.copyWith(isRoomAvailable: null));
 
     try {
-      final available = await _repository.isRoomAvailable(hotelId, roomTypeId);
+      final available = await _repository.isRoomAvailable(
+        hotelId,
+        roomTypeId,
+        checkIn: checkIn,
+        checkOut: checkOut,
+      );
       emit(state.copyWith(isRoomAvailable: available));
     } catch (e) {
-      // Nếu lỗi, cho phép đặt (tránh block user)
       emit(state.copyWith(isRoomAvailable: true));
     }
   }

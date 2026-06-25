@@ -7,15 +7,22 @@ import '../../../../bookings/presentation/pages/booking_confirm_page.dart';
 class RoomCard extends StatefulWidget {
   final HotelEntity hotel;
   final dynamic room;
+  final DateTime checkIn; // ← thêm
+  final DateTime checkOut; // ← thêm
 
-  const RoomCard({super.key, required this.hotel, required this.room});
+  const RoomCard({
+    super.key,
+    required this.hotel,
+    required this.room,
+    required this.checkIn, // ← thêm
+    required this.checkOut, // ← thêm
+  });
 
   @override
   State<RoomCard> createState() => _RoomCardState();
 }
 
 class _RoomCardState extends State<RoomCard> {
-  // null = đang check, true = còn phòng, false = hết phòng
   bool? _isAvailable;
 
   @override
@@ -29,10 +36,11 @@ class _RoomCardState extends State<RoomCard> {
       final available = await BookingApi().isRoomAvailable(
         widget.hotel.id,
         widget.room.id as String,
+        checkIn: widget.checkIn, // ← thêm
+        checkOut: widget.checkOut, // ← thêm
       );
       if (mounted) setState(() => _isAvailable = available);
     } catch (_) {
-      // Nếu lỗi → hiện như còn phòng, không block user
       if (mounted) setState(() => _isAvailable = true);
     }
   }
@@ -383,7 +391,12 @@ class _RoomCardState extends State<RoomCard> {
       MaterialPageRoute(
         builder:
             (_) =>
-                BookingConfirmPage(hotel: widget.hotel, roomType: widget.room),
+                BookingConfirmPage(
+                  hotel: widget.hotel,
+                  roomType: widget.room,
+                  checkIn: widget.checkIn,
+                  checkOut: widget.checkOut,
+                ),
       ),
     );
   }

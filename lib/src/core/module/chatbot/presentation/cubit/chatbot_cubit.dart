@@ -214,6 +214,52 @@ class ChatbotCubit extends Cubit<ChatbotState> {
     _handleJsonResponse(response.body);
   }
 
+  // ───────────────── CONFIRM PAYMENT ─────────────────
+
+  /// Gọi sau khi thanh toán thành công từ PaymentPage
+  Future<void> confirmPayment({
+    required String bookingId,
+    String paymentMethod = 'momo',
+    double? finalAmount,
+  }) async {
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) return;
+
+      final response =
+          await Supabase.instance.client
+              .from('bookings')
+              .update({
+                'payment_status': 'paid',
+                'paid_at': DateTime.now().toIso8601String(),
+                'payment_method': paymentMethod,
+                if (finalAmount != null) 'total_price': finalAmount,
+              })
+              .eq('id', bookingId)
+              .select();
+
+      if (response.isNotEmpty) {
+        _appendSuccessMessage(
+          'Thanh toán thành công! Booking đã được xác nhận.',
+        );
+      } else {
+        _appendError('Không tìm thấy booking để cập nhật thanh toán.');
+      }
+    } catch (e) {
+      print('❌ Lỗi confirm payment: $e');
+      _appendError(
+        'Cập nhật thanh toán thất bại. Vui lòng kiểm tra trong Bookings.',
+      );
+    }
+  }
+
+  void _appendSuccessMessage(String msg) {
+    final finalMessages = List<ChatMessageEntity>.from(state.messages)
+      ..add(ChatMessageEntity(role: 'assistant', content: '✅ $msg'));
+
+    emit(state.copyWith(messages: finalMessages));
+  }
+
   // ───────────────── HANDLE RESPONSE ─────────────────
 
   void _handleJsonResponse(String raw) {

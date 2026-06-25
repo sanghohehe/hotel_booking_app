@@ -373,6 +373,7 @@ class _AdminUserDetailPageState extends State<AdminUserDetailPage> {
                       ),
                     ],
                   ),
+                  
                 ],
               ),
             ),

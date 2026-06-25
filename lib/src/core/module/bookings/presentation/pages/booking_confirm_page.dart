@@ -20,11 +20,15 @@ import 'package:intl/intl.dart';
 class BookingConfirmPage extends StatelessWidget {
   final HotelEntity hotel;
   final RoomTypeModel roomType;
+  final DateTime checkIn; // ← thêm
+  final DateTime checkOut; // ← thêm
 
   const BookingConfirmPage({
     super.key,
     required this.hotel,
     required this.roomType,
+    required this.checkIn, // ← thêm
+    required this.checkOut, // ← thêm
   });
 
   @override
@@ -32,8 +36,12 @@ class BookingConfirmPage extends StatelessWidget {
     return BlocProvider(
       create: (context) {
         final cubit = BookingConfirmCubit(BookingRepositoryImpl(BookingApi()));
-        // ✅ Check availability ngay khi mở trang
-        cubit.checkAvailability(hotelId: hotel.id, roomTypeId: roomType.id);
+        cubit.checkAvailability(
+          hotelId: hotel.id,
+          roomTypeId: roomType.id,
+          checkIn: checkIn, // ← thêm
+          checkOut: checkOut, // ← thêm
+        );
         return cubit;
       },
       child: _BookingConfirmView(hotel: hotel, roomType: roomType),
