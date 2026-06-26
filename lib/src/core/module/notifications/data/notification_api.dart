@@ -11,11 +11,9 @@ class NotificationApi {
     return id;
   }
 
-  /// Lấy noti của user hiện tại (RLS select_own tự lọc theo auth.uid())
   Future<List<AppNotification>> getMyNotifications({int limit = 50}) async {
     final uid = _client.auth.currentUser?.id;
-    // debug để check đúng user
-    // ignore: avoid_print
+  
     print('[noti] currentUserId=$uid');
 
     final data = await _client
@@ -24,7 +22,6 @@ class NotificationApi {
         .order('created_at', ascending: false)
         .limit(limit);
 
-    // ignore: avoid_print
     print('[noti] rows=${(data as List).length}');
 
     return (data as List)
@@ -32,12 +29,10 @@ class NotificationApi {
         .toList();
   }
 
-  /// Đếm unread (để làm badge)
   Future<int> countUnread() async {
     final data = await _client
         .from('notifications')
         .select('id')
-        // có thể thêm eq('user_id', _userId) nhưng mình KHÔNG thêm để tránh lệch client/user
         .eq('is_read', false);
 
     return (data as List).length;
